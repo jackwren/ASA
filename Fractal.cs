@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -8,10 +9,11 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace Fractal
+namespace Project
 {
     public partial class Fractal : Form
     {
+
         private const int MAX = 256;      // max iterations
         private const double SX = -2.025; // start value real
         private const double SY = -1.125; // start value imaginary
@@ -21,21 +23,17 @@ namespace Fractal
         private static double xstart, ystart, xende, yende, xzoom, yzoom;
         private static bool action, rectangle, finished;
         private static float xy;
-
-        private Graphics g1;
+        
         private Bitmap myBitmap;
-
-
+        private Graphics g1;
         //private Cursor c1, c2;
         ///private HSB HSBcol = new HSB();
-        ///
 
         public Fractal()
         {
             InitializeComponent();
             init();
             start();
-            
         }
 
         private void Fractal_Load(object sender, EventArgs e)
@@ -43,7 +41,34 @@ namespace Fractal
             
         }
 
-       
+        private void mainMenuToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void saveStateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void saveImageToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            if (myBitmap != null)
+            {
+                SaveFileDialog dia = new SaveFileDialog();
+                dia.Filter = "png file (*.png)|*.png";
+
+                if (dia.ShowDialog() == DialogResult.OK)
+                {
+                    try
+                    {
+                        this.myBitmap.Save(dia.FileName);
+                    }
+                    catch { }
+                }
+            }
+        }
+
         public struct HSBColor
         {
             float h;
@@ -161,7 +186,7 @@ namespace Fractal
             y1 = this.Height;
             xy = (float)x1 / (float)y1;
 
-            myBitmap  = new Bitmap(x1, y1);
+            myBitmap = new Bitmap(x1, y1);
             g1 = Graphics.FromImage(myBitmap);
 
             finished = true;
@@ -201,11 +226,11 @@ namespace Fractal
         {
             g.DrawImage(myBitmap, 0, 0, x1, y1);
 
-            Pen Pen = new Pen(Color.White, 3);
+            Pen Pen = new Pen(Color.White);
 
             if (rectangle)
             {
-                
+
                 if (xs < xe)
                 {
                     if (ys < ye) g.DrawRectangle(Pen, xs, ys, (xe - xs), (ye - ys));
@@ -216,12 +241,13 @@ namespace Fractal
                     if (ys < ye) g.DrawRectangle(Pen, xe, ys, (xs - xe), (ye - ys));
                     else g.DrawRectangle(Pen, xe, ye, (xs - xe), (ys - ye));
                 }
+                Pen.Dispose();
             }
         }
 
         private void mandelbrot() // calculate all points
         {
-            
+
             Pen tempPen = null;
             Color col;
             int x, y;
@@ -229,7 +255,7 @@ namespace Fractal
 
             action = false;
             Cursor.Current = Cursors.WaitCursor; //setCursor(c1);
-            
+
             for (x = 0; x < x1; x += 2)
                 for (y = 0; y < y1; y++)
                 {
@@ -248,18 +274,16 @@ namespace Fractal
 
                         col = HSBColor.FromHSB(new HSBColor(h * 255, 0.8f * 255, b * 255));
 
-                        tempPen = new Pen(col, 3);
+                        tempPen = new Pen(col);
                         //djm 
                         alt = h;
                     }
                     g1.DrawLine(tempPen, x, y, x + 1, y);
                 }
-            
+
             Cursor.Current = Cursors.Cross; //setCursor(c2);
             action = true;
 
-            update(g1);
-            
         }
 
         private float pointcolour(double xwert, double ywert) // color value from 0.0 to 1.0 by iterations
@@ -281,12 +305,12 @@ namespace Fractal
 
         private void Fractal_MouseDown(object sender, MouseEventArgs e)
         {
-            
+
             if (action)
             {
                 xs = e.X;
                 ys = e.Y;
-                
+
             }
 
         }
@@ -295,7 +319,7 @@ namespace Fractal
         {
             int z, w;
 
-            
+
             if (action)
             {
                 xe = e.X;
@@ -329,10 +353,13 @@ namespace Fractal
                 mandelbrot();
                 rectangle = false;
                 Invalidate();
+
+
+
             }
         }
 
-        
+
 
         private void Fractal_MouseMove(object sender, MouseEventArgs e)
         {
@@ -342,13 +369,12 @@ namespace Fractal
                 xe = e.X;
                 ye = e.Y;
                 rectangle = true;
-                Invalidate();
-
                 
+
+
             }
-            
+
         }
 
     }
 }
-
