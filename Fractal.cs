@@ -21,8 +21,11 @@ namespace Fractal
         private static double xstart, ystart, xende, yende, xzoom, yzoom;
         private static bool action, rectangle, finished;
         private static float xy;
+
         private Graphics g1;
         private Bitmap myBitmap;
+
+
         //private Cursor c1, c2;
         ///private HSB HSBcol = new HSB();
         ///
@@ -187,7 +190,9 @@ namespace Fractal
 
         private void Fractal_Paint(object sender, PaintEventArgs e)
         {
-            update(g1);
+            Graphics g1 = e.Graphics;
+            g1.DrawImage(myBitmap, 0, 0, x1, y1);
+            g1.Dispose();
 
 
         }
@@ -253,6 +258,7 @@ namespace Fractal
             Cursor.Current = Cursors.Cross; //setCursor(c2);
             action = true;
 
+            update(g1);
             
         }
 
@@ -280,7 +286,9 @@ namespace Fractal
             {
                 xs = e.X;
                 ys = e.Y;
+                
             }
+
         }
 
         private void Fractal_MouseUp(object sender, MouseEventArgs e)
@@ -335,7 +343,10 @@ namespace Fractal
                 ye = e.Y;
                 rectangle = true;
                 Invalidate();
+
+                
             }
+            
         }
 
     }
