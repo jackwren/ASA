@@ -4,10 +4,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml.Serialization;
 
 namespace Project
 {
@@ -26,14 +28,15 @@ namespace Project
         
         private Bitmap myBitmap;
         private Graphics g1;
-        //private Cursor c1, c2;
-        ///private HSB HSBcol = new HSB();
 
         public Fractal()
         {
             InitializeComponent();
             init();
             start();
+            
+            this.DoubleBuffered = true;
+            
         }
 
         private void Fractal_Load(object sender, EventArgs e)
@@ -48,8 +51,123 @@ namespace Project
 
         private void saveStateToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            SaveFileDialog dia = new SaveFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            BitmapState bit = new BitmapState();
+            bit.setValues(xstart, xende, ystart, yende, xzoom, yzoom);
+
+            Console.WriteLine("b4 xs : " + bit.getXS() + " xe : " + bit.getXE());
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                   XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+                   TextWriter tw = new StreamWriter(dia.FileName);
+                   xs.Serialize(tw, bit);
+                   tw.Close();
+                   MessageBox.Show("State Saved!");
+               
+                }
+                catch { MessageBox.Show("There was a problem saving file."); }
+                
+            }
 
         }
+
+        private void loadStateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // load fractal here
+            OpenFileDialog dia = new OpenFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+            BitmapState bit;
+            XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+            using (var sr = new StreamReader(dia.FileName))
+            {
+                bit = (BitmapState)xs.Deserialize(sr);             
+            }
+
+            if (bit != null)
+            {
+                Console.WriteLine("aff xs : " + bit.getXS() + " xe : " + bit.getXE());
+                xstart = bit.getXS();
+                ystart = bit.getYS();
+                xende = bit.getXE();
+                yende = bit.getYE();
+                yzoom = bit.getYZ();
+                xzoom = bit.getXZ();
+                mandelbrot();
+                this.Refresh();
+            }
+            }
+
+        }
+
+    //--------------
+    
+    public class BitmapState
+    {
+        //REPLACE END WITH ZOOM
+        public  double  xs;
+        public  double  xe;
+        public  double  ys;
+        public  double  ye;
+        public  double  xz;
+        public  double  yz;
+        Bitmap   bitmap;
+        // HAD TO MAKE THEM PUBLIC SO XML SERIALIZER CAN WRITE
+
+        public void setValues(double xs, double xe, double ys, double ye, double xz, double yz)
+        {
+            this.xs  =   xs;
+            this.ys   =  ys;
+            this.xe  =   xe;
+            this.ye  =   ye;
+            this.yz = yz;
+            this.xz = xz;
+        }
+        
+        public double getXS()
+        {
+            return xs;
+        }
+        public double getYS()
+        {
+            return ys;
+        }
+        public double getXE()
+        {
+            return xe;
+        }
+        public double getYE()
+        {
+            return ye;
+        }
+        public double getXZ()
+        {
+            return xz;
+        }
+        public double getYZ()
+        {
+            return yz;
+        }
+
+
+        // Probably not
+        public void setBitmap(Bitmap bm)
+        {
+            bitmap = bm;
+        }
+        public Bitmap getBitmap()
+        {
+            return bitmap;
+        }
+    }
+
 
         private void saveImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -63,6 +181,7 @@ namespace Project
                     try
                     {
                         this.myBitmap.Save(dia.FileName);
+                        MessageBox.Show("Image Saved!");
                     }
                     catch { }
                 }
@@ -179,7 +298,6 @@ namespace Project
 
         public void init() // all instances will be prepared
         {
-            //HSBcol = new HSB();
             finished = false;
 
             x1 = this.Width;
@@ -217,17 +335,18 @@ namespace Project
         {
             Graphics g1 = e.Graphics;
             g1.DrawImage(myBitmap, 0, 0, x1, y1);
-            g1.Dispose();
 
-
+            if(rectangle == true)
+            {
+                update(g1);
+            }
+            
         }
 
         public void update(Graphics g)
         {
-            g.DrawImage(myBitmap, 0, 0, x1, y1);
-
             Pen Pen = new Pen(Color.White);
-
+            
             if (rectangle)
             {
 
@@ -254,7 +373,7 @@ namespace Project
             float h, b, alt = 0.0f;
 
             action = false;
-            Cursor.Current = Cursors.WaitCursor; //setCursor(c1);
+            this.Cursor = Cursors.WaitCursor; //setCursor(c1);
 
             for (x = 0; x < x1; x += 2)
                 for (y = 0; y < y1; y++)
@@ -263,14 +382,6 @@ namespace Project
                     if (h != alt)
                     {
                         b = 1.0f - h * h; // brightness
-
-                        /*HSB.fromHSB(h * 255, 0.8f * 255, b * 255);
-
-                        int red = Convert.ToInt32(HSB.rChan); //.getRed();
-                        int green = Convert.ToInt32(HSB.gChan); //.getGreen();
-                        int blue = Convert.ToInt32(HSB.bChan); //.getBlue();
-                        
-                        col = Color.FromArgb(0, red, green, blue);*/
 
                         col = HSBColor.FromHSB(new HSBColor(h * 255, 0.8f * 255, b * 255));
 
@@ -281,9 +392,9 @@ namespace Project
                     g1.DrawLine(tempPen, x, y, x + 1, y);
                 }
 
-            Cursor.Current = Cursors.Cross; //setCursor(c2);
+            this.Cursor = Cursors.Cross; //setCursor(c2);
             action = true;
-
+            
         }
 
         private float pointcolour(double xwert, double ywert) // color value from 0.0 to 1.0 by iterations
@@ -309,8 +420,9 @@ namespace Project
             if (action)
             {
                 xs = e.X;
-                ys = e.Y;
-
+                ys = e.Y;               
+                rectangle = true;
+                
             }
 
         }
@@ -352,14 +464,12 @@ namespace Project
                 yzoom = (yende - ystart) / (double)y1;
                 mandelbrot();
                 rectangle = false;
-                Invalidate();
 
+                Invalidate();
 
 
             }
         }
-
-
 
         private void Fractal_MouseMove(object sender, MouseEventArgs e)
         {
@@ -368,13 +478,17 @@ namespace Project
             {
                 xe = e.X;
                 ye = e.Y;
-                rectangle = true;
+
+                if (rectangle == true)
+                {
+                    this.Refresh();
+                }
                 
-
-
             }
+            
 
         }
+
 
     }
 }

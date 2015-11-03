@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Xml;
 
 namespace Project
 {
@@ -29,14 +31,9 @@ namespace Project
            
         }
 
-        private void loadToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-
-        }
-
         private void aboutToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show("Fractal Program \n\r\n\r(C) 2015 Jack Wren");
+            MessageBox.Show("Fractal Program              \n\r\n\r(C) 2015 Jack Wren");
         }
     }
 }
