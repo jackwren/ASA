@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -11,163 +11,42 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Xml.Serialization;
 
-namespace Project
+namespace Assignment
 {
     public partial class Fractal : Form
     {
-
         private const int MAX = 256;      // max iterations
         private const double SX = -2.025; // start value real
         private const double SY = -1.125; // start value imaginary
         private const double EX = 0.6;    // end value real
         private const double EY = 1.125;  // end value imaginary
-        private static int x1, y1, xs, ys, xe, ye;
+        private static int x1, y1, xs, ys, xe, ye, red, green, blue;
         private static double xstart, ystart, xende, yende, xzoom, yzoom;
         private static bool action, rectangle, finished;
         private static float xy;
-        
+
         private Bitmap myBitmap;
         private Graphics g1;
+        private Color col;
+
+        private bool colourCycle = false; // Used to check how to draw the image
+        private int timerSpeed = 2; // Speed of timer
+        Timer ccTimer = new Timer();
 
         public Fractal()
         {
             InitializeComponent();
+
             init();
             start();
-            
-            this.DoubleBuffered = true;
-            
-        }
 
-        private void Fractal_Load(object sender, EventArgs e)
-        {
-            
+            this.DoubleBuffered = true;
         }
 
         private void mainMenuToolStripMenuItem_Click(object sender, EventArgs e)
         {
             this.Close();
         }
-
-        private void saveStateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            SaveFileDialog dia = new SaveFileDialog();
-            dia.Filter = "xml file (*.xml)|*.xml";
-
-            BitmapState bit = new BitmapState();
-            bit.setValues(xstart, xende, ystart, yende, xzoom, yzoom);
-
-            Console.WriteLine("b4 xs : " + bit.getXS() + " xe : " + bit.getXE());
-
-            if (dia.ShowDialog() == DialogResult.OK)
-            {
-                try
-                {
-                   XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
-                   TextWriter tw = new StreamWriter(dia.FileName);
-                   xs.Serialize(tw, bit);
-                   tw.Close();
-                   MessageBox.Show("State Saved!");
-               
-                }
-                catch { MessageBox.Show("There was a problem saving file."); }
-                
-            }
-
-        }
-
-        private void loadStateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            // load fractal here
-            OpenFileDialog dia = new OpenFileDialog();
-            dia.Filter = "xml file (*.xml)|*.xml";
-
-            if (dia.ShowDialog() == DialogResult.OK)
-            {
-            BitmapState bit;
-            XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
-            using (var sr = new StreamReader(dia.FileName))
-            {
-                bit = (BitmapState)xs.Deserialize(sr);             
-            }
-
-            if (bit != null)
-            {
-                Console.WriteLine("aff xs : " + bit.getXS() + " xe : " + bit.getXE());
-                xstart = bit.getXS();
-                ystart = bit.getYS();
-                xende = bit.getXE();
-                yende = bit.getYE();
-                yzoom = bit.getYZ();
-                xzoom = bit.getXZ();
-                mandelbrot();
-                this.Refresh();
-            }
-            }
-
-        }
-
-    //--------------
-    
-    public class BitmapState
-    {
-        //REPLACE END WITH ZOOM
-        public  double  xs;
-        public  double  xe;
-        public  double  ys;
-        public  double  ye;
-        public  double  xz;
-        public  double  yz;
-        Bitmap   bitmap;
-        // HAD TO MAKE THEM PUBLIC SO XML SERIALIZER CAN WRITE
-
-        public void setValues(double xs, double xe, double ys, double ye, double xz, double yz)
-        {
-            this.xs  =   xs;
-            this.ys   =  ys;
-            this.xe  =   xe;
-            this.ye  =   ye;
-            this.yz = yz;
-            this.xz = xz;
-        }
-        
-        public double getXS()
-        {
-            return xs;
-        }
-        public double getYS()
-        {
-            return ys;
-        }
-        public double getXE()
-        {
-            return xe;
-        }
-        public double getYE()
-        {
-            return ye;
-        }
-        public double getXZ()
-        {
-            return xz;
-        }
-        public double getYZ()
-        {
-            return yz;
-        }
-
-
-        // Probably not
-        public void setBitmap(Bitmap bm)
-        {
-            bitmap = bm;
-        }
-        public Bitmap getBitmap()
-        {
-            return bitmap;
-        }
-    }
-
 
         private void saveImageToolStripMenuItem_Click(object sender, EventArgs e)
         {
@@ -187,6 +66,287 @@ namespace Project
                 }
             }
         }
+
+        private void saveStateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog dia = new SaveFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            BitmapState bit = new BitmapState();
+            bit.setValues(xstart, xende, ystart, yende, xzoom, yzoom);
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+                    TextWriter tw = new StreamWriter(dia.FileName);
+                    xs.Serialize(tw, bit);
+                    tw.Close();
+                    MessageBox.Show("State Saved!");
+
+                }
+                catch { MessageBox.Show("There was a problem saving file."); }
+
+            }
+        }
+
+        private void loadStateToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            // load fractal here
+            OpenFileDialog dia = new OpenFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+                BitmapState bit;
+                XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+                using (var sr = new StreamReader(dia.FileName))
+                {
+                    bit = (BitmapState)xs.Deserialize(sr);
+                }
+
+                if (bit != null)
+                {
+                    xstart = bit.getXS();    //sets each value
+                    ystart = bit.getYS();
+                    xende = bit.getXE();
+                    yende = bit.getYE();
+                    yzoom = bit.getYZ();
+                    xzoom = bit.getXZ();
+                    mandelbrot();
+                    this.Refresh();
+                }
+            }
+        }
+
+
+        private void Fractal_Load(object sender, EventArgs e)
+        {
+            col = Color.FromArgb(red, green, blue); //trying to load col from palette, however not working
+        }
+
+
+
+        //----------------------timer
+
+
+
+        private void startCycleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ccTimer.Enabled = true;
+            colourCycle = true;
+            action = false;
+        }
+
+        private void stopCycleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ccTimer.Enabled = false;
+            colourCycle = false;
+            action = true;
+            restart();
+        }
+
+        #region Colour Cycling
+
+        void ccTimer_Tick(object Sender, EventArgs e)
+        {
+            // Save the image as a GIF.
+            try
+            {
+                myBitmap.Save("c:\\temp\\bmp.gif", ImageFormat.Gif);
+            }
+            catch (Exception exc)
+            {
+                Console.WriteLine("Error with saving the picture gif");
+            }
+
+            // Construct a new image from the GIF file.
+            //pb.ImageLocation = "c:\\temp\\button.gif";
+            Image pb = Image.FromFile("c:\\temp\\bmp.gif");
+
+            ColorPalette palette = pb.Palette;
+            Color first = palette.Entries[0];
+            for (int i = 0; i < (palette.Entries.Length - 1); i++)
+            {
+                palette.Entries[i] = palette.Entries[i + 1];
+            }
+            palette.Entries[(palette.Entries.Length - 1)] = first;
+            pb.Palette = palette;
+
+            myBitmap = new Bitmap(pb, x1, y1);
+
+            this.Refresh();
+
+            pb.Dispose();
+        }
+
+        #endregion
+
+        // RESTART FUNCTION
+        private void restart()
+        {
+            init();
+            start();
+            mandelbrot();
+        }
+
+
+        //this part same as for image icons, starting and stoping the cycle...
+        private void toolStripButton3_Click(object sender, EventArgs e)
+        {
+            ccTimer.Enabled = true;
+            colourCycle = true;
+            action = false;
+        }
+
+        private void toolStripButton4_Click(object sender, EventArgs e)
+        {
+            ccTimer.Enabled = false;
+            colourCycle = false;
+            action = true;
+            restart();
+        }
+
+        //--------------------
+
+
+
+        // ------------------- end timer
+
+
+
+
+        //this part same but for image icons for saving and loading ----------------------------------
+
+        private void toolStripButton1_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog dia = new SaveFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            BitmapState bit = new BitmapState();
+            bit.setValues(xstart, xende, ystart, yende, xzoom, yzoom);
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+                try
+                {
+                    XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+                    TextWriter tw = new StreamWriter(dia.FileName);
+                    xs.Serialize(tw, bit);
+                    tw.Close();
+                    MessageBox.Show("State Saved!");
+
+                }
+                catch { MessageBox.Show("There was a problem saving file."); }
+
+            }
+        }
+
+        private void toolStripButton2_Click(object sender, EventArgs e)
+        {
+            // load fractal here
+            OpenFileDialog dia = new OpenFileDialog();
+            dia.Filter = "xml file (*.xml)|*.xml";
+
+            if (dia.ShowDialog() == DialogResult.OK)
+            {
+                BitmapState bit;
+                XmlSerializer xs = new XmlSerializer(typeof(BitmapState));
+                using (var sr = new StreamReader(dia.FileName))
+                {
+                    bit = (BitmapState)xs.Deserialize(sr);
+                }
+
+                if (bit != null)
+                {
+                    xstart = bit.getXS();
+                    ystart = bit.getYS();
+                    xende = bit.getXE();
+                    yende = bit.getYE();
+                    yzoom = bit.getYZ();
+                    xzoom = bit.getXZ();
+                    mandelbrot();
+                    this.Refresh();
+                }
+            }
+        }
+
+        //---------------------------------------------------------------------------------------------
+        //making the bitmapstate to store zoomed values
+
+        public class BitmapState
+        {
+            //REPLACE END WITH ZOOM
+            public double xs;
+            public double xe;
+            public double ys;
+            public double ye;
+            public double xz;
+            public double yz;
+            Bitmap bitmap;
+            // HAD TO MAKE THEM PUBLIC SO XML SERIALIZER CAN WRITE
+
+            public void setValues(double xs, double xe, double ys, double ye, double xz, double yz)
+            {
+                this.xs = xs;
+                this.ys = ys;
+                this.xe = xe;
+                this.ye = ye;
+                this.yz = yz;
+                this.xz = xz;
+            }
+
+            public double getXS()
+            {
+                return xs;
+            }
+            public double getYS()
+            {
+                return ys;
+            }
+            public double getXE()
+            {
+                return xe;
+            }
+            public double getYE()
+            {
+                return ye;
+            }
+            public double getXZ()
+            {
+                return xz;
+            }
+            public double getYZ()
+            {
+                return yz;
+            }
+            // Probably not
+            public void setBitmap(Bitmap bm)
+            {
+                bitmap = bm;
+            }
+            public Bitmap getBitmap()
+            {
+                return bitmap;
+            }
+        }
+
+
+        //--------------------------------------------------------------------------------------------------
+        //palette
+        private void editPaleToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                EditPaletteDialog frmchild = new EditPaletteDialog(); //shows the edit palette, not finished
+                frmchild.Show();
+            }
+            catch { }
+        }
+
+
+        //----------makes the colour
 
         public struct HSBColor
         {
@@ -234,8 +394,8 @@ namespace Project
             public static Color FromHSB(HSBColor hsbColor)
             {
                 float r = hsbColor.b;
-                float g = hsbColor.b;
-                float b = hsbColor.b;
+                float g = hsbColor.s;
+                float b = hsbColor.h;
                 if (hsbColor.s != 0)
                 {
                     float max = hsbColor.b;
@@ -288,12 +448,17 @@ namespace Project
                 return Color.FromArgb
                     (
                         hsbColor.a,
-                        (int)Math.Round(Math.Min(Math.Max(r, 0), 255)),
-                        (int)Math.Round(Math.Min(Math.Max(g, 0), 255)),
-                        (int)Math.Round(Math.Min(Math.Max(b, 0), 255))
+                        red = (int)Math.Round(Math.Min(Math.Max(r, 0), 255)),
+                        green = (int)Math.Round(Math.Min(Math.Max(g, 0), 255)),
+                        blue = (int)Math.Round(Math.Min(Math.Max(b, 0), 255))
                         );
             }
         }
+
+
+        //-------------end of colour
+
+
 
 
         public void init() // all instances will be prepared
@@ -306,6 +471,9 @@ namespace Project
 
             myBitmap = new Bitmap(x1, y1);
             g1 = Graphics.FromImage(myBitmap);
+
+            ccTimer.Interval = timerSpeed;
+            ccTimer.Tick += ccTimer_Tick;
 
             finished = true;
         }
@@ -330,23 +498,22 @@ namespace Project
                 xstart = xende - (yende - ystart) * (double)xy;
         }
 
-
         private void Fractal_Paint(object sender, PaintEventArgs e)
         {
             Graphics g1 = e.Graphics;
-            g1.DrawImage(myBitmap, 0, 0, x1, y1);
+            g1.DrawImage(myBitmap, 0, 0, x1, y1);  //draws to screen
 
-            if(rectangle == true)
+            if (rectangle == true)
             {
                 update(g1);
             }
-            
+
         }
 
         public void update(Graphics g)
         {
-            Pen Pen = new Pen(Color.White);
-            
+            Pen Pen = new Pen(Color.White); // draws boxes for zooming etc....
+
             if (rectangle)
             {
 
@@ -368,7 +535,6 @@ namespace Project
         {
 
             Pen tempPen = null;
-            Color col;
             int x, y;
             float h, b, alt = 0.0f;
 
@@ -383,7 +549,7 @@ namespace Project
                     {
                         b = 1.0f - h * h; // brightness
 
-                        col = HSBColor.FromHSB(new HSBColor(h * 255, 0.8f * 255, b * 255));
+                        col = HSBColor.FromHSB(new HSBColor(h * 255, 0.8f * 255, b * 255)); // draws the fractal
 
                         tempPen = new Pen(col);
                         //djm 
@@ -394,7 +560,7 @@ namespace Project
 
             this.Cursor = Cursors.Cross; //setCursor(c2);
             action = true;
-            
+
         }
 
         private float pointcolour(double xwert, double ywert) // color value from 0.0 to 1.0 by iterations
@@ -412,7 +578,7 @@ namespace Project
             return (float)j / (float)MAX;
         }
 
-
+        //------------------------------mouse actions
 
         private void Fractal_MouseDown(object sender, MouseEventArgs e)
         {
@@ -420,9 +586,9 @@ namespace Project
             if (action)
             {
                 xs = e.X;
-                ys = e.Y;               
+                ys = e.Y;
                 rectangle = true;
-                
+
             }
 
         }
@@ -483,11 +649,13 @@ namespace Project
                 {
                     this.Refresh();
                 }
-                
+
             }
-            
+
 
         }
+
+
 
 
     }
